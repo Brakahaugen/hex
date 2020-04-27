@@ -115,10 +115,28 @@ class Node:
                 choice = c
         return choice
 
-    def get_distribution(self):
+    def get_distribution(self, heuristic = False):
         """
             Finds the distribution over each action
+            If heuristic == True, returns the best action only
         """
+
+        if heuristic:
+            """
+                Checks all legal actions, and whether or not they are game-winning actions. IF they are, only these are returned.
+            """
+            D = [0] * (len(self.state) - 1)
+            A = [None] * (len(self.state) - 1)
+            
+            shuffled_actions = self.getLegalActions()
+            random.shuffle(shuffled_actions)
+
+            for action in shuffled_actions:
+                if self.game.is_terminal_state(self.game.simulate_move(self.state, action)):
+                    A[action] = action
+                    D[action] = 1
+                    return D, A
+
         D = []
 
         #Ordering the lists.
@@ -152,21 +170,31 @@ class Node:
         return random.choice(actions)
 
 
-    def rollout(self, anet: ANET, once_only = False):
+    def rollout(self, anet: ANET, heuristic, once_only = False):
         """
             Recursively does a rollout based on the rollout policy
+            Heuristic always does a winning action.
             return 1 if root-player wins, 
             return 0 else.
-        """
-        
-        if not self.isTerminal():
-            
-            D = anet.forward(self.state)
 
+        """
+        if not self.isTerminal():
+
+            if heuristic: #If enabled, return the winning action if any   
+                for action in self.getLegalActions():
+                    child_state = self.game.simulate_move(self.state, action)
+                    if self.game.is_terminal_state(child_state):
+                        child_node = self.generateChild(action, append=False) 
+                        return child_node.rollout(anet, heuristic = heuristic)
+            # if len(anet):
+            #     D = anet[int(self.state[0]) % 2].forward(self.state)
+            # else:
+            D = anet.forward(self.state)
             #Invalidate every illegal action
             for i in range(len(D)): 
                 if i not in self.getLegalActions():
                     D[i] = -99999 
+        
 
             #Add a randomness factor to not latch onto a bad rollout policy
             if random.random() < anet.epsilon:
@@ -177,7 +205,7 @@ class Node:
             if once_only:
                 return child_node
 
-            return child_node.rollout(anet)
+            return child_node.rollout(anet, heuristic = heuristic)
 
         else:
             # Since we are in a terminal state, we want root != next_player.  

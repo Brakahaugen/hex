@@ -1,6 +1,7 @@
 import time
 import copy
 import termcolor
+import numpy as np
 
 class StateManager:
 
@@ -9,16 +10,83 @@ class StateManager:
         self.hexNeighbours = [[-1,0],[-1,1],[0,1],[0,-1],[1,-1],[1,0]]
         self.random_player = 1
 
-    def create_initial_state(self, p: int = 0):
+    # def get_best_action(distro: list = []):
+    #     best_action = index(max(distro))
+
+    def create_initial_state(self, p: int = 0, padding = 0):
         """
             Creates a flattened board-string representing an empty board.
             If no player is specified, alternates between player 1 and 2
+            Padding applies n number of padding layers to the model, Making the effective board smaller in size.
         """
         if p == 0:
             self.random_player = self.random_player % 2 + 1
             p = self.random_player
-        return str(p).ljust(self.size**2 + 1, '0')
+
+        if padding > 0:
+            board = ["0"] * self.size**3
+            for i in range(padding):
+                for j in range(i, self.size):
+                    board[i*self.size + j] = "1" #top
+                    board[(self.size - i - 1)*self.size + j] = "1" #bottom
+
+                    board[j*self.size + i] = "2" #left
+                    board[(j + 1)*self.size - i - 1] = "2" #right
+                    
+            return str(p) + ''.join(board)
+
+        else:
+            return str(p).ljust(self.size**2 + 1, '0')
         
+    def create_padded_states(self, state: str):
+        """
+            Given a winning, padded, board state, find all combinations that would lead to a win 
+        """
+        winner = self.is_terminal_state(state)
+        state_2d = self.state_to_2D(state)
+
+        # if string    
+        #     for i in range(self.size):
+        #         state_2d[0,i] 
+        #         state_2d[self.size,i]
+        #         state_2d[i,0]
+        #         state_2d[i,self.size]
+                
+
+    def flip_state(self, state):
+        """
+            returns a mirrored repr. of the board
+        """
+        return state[::-1]
+    
+    def rotate_state(self, state, k = 1):
+        # print(type(state))
+        if isinstance(state, str):
+            print("haø")
+            print("heyo")
+            state = self.state_to_2D(state)
+        print(state)
+        
+        return self.flatten_2d(np.rot90(state))
+
+    
+    def state_to_2D(self, state: str):
+        """
+            Takes a string state and returns a 2D numpy matrix representing that state
+        """
+        state_list = list(state[1:])
+        two_dim = np.reshape(state_list, (self.size, self.size))
+        print(two_dim)
+        return two_dim
+    
+    def flatten_2d(self, state_2d: np.array):
+        """
+            takes a 2D numpy matrix and returns a flattened string
+        """
+        state = state_2d.flatten()
+        return ''.join(state.tolist())
+
+
     def simulate_move(self, state: str, action: int):
         """
             applies the action on the state by placing the players pin on the specified location.
@@ -110,9 +178,20 @@ class StateManager:
 
 
 if __name__ == "__main__":
-    s = StateManager(4)
+    s = StateManager(3)
+    s.create_initial_state(padding=0)
     #Make a visualization given a size and a state.
-    s.print_state("12111222121221211")
-    print(s.is_terminal_state("12111222121221211"))
+    # s.print_state(s.create_initial_state(padding=2))
+    print()
+    # s.print_state(s.create_initial_state(padding=2))
+    print()
+    str = "1110022220"
+    s.print_state(s.rotate_state(str,1))
+    print()
+    s.print_state(s.rotate_state(str,3))
+    
+    # print(s.is_terminal_state("12111222121221211"))
     # print(s.check_wins([0,0],'2',list("2111222121221211")))
+
+    
     

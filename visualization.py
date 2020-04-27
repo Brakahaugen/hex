@@ -4,6 +4,8 @@ import random
 from state_manager import StateManager
 from os import path
 from anet import ANET
+import threading
+
 
 # Define Colors 
 GREY = (100, 100, 100)
@@ -33,11 +35,15 @@ class GameDisplay:
         if start_state == None: 
             self.start_state = '1'.ljust(size**2 + 1, '0')
         self.AI_players = AI_players
+        self.player_names = None
+        self.player_scores = None
 
 
     def run_game(self):
+    
         if self.V:
-            return game_loop(self.start_state, self.state_manager, self.SIZE, self.GRID, self.WIDTH, self.LINE_WIDTH, self.CIRCLES, self.HOLE_RADIUS, self.FPS, self.players, self.screen, self.clock, self.AI_players, self.V)
+            self.init_modules()
+            return game_loop(self.start_state, self.state_manager, self.SIZE, self.GRID, self.WIDTH, self.LINE_WIDTH, self.CIRCLES, self.HOLE_RADIUS, self.FPS, self.players, self.screen, self.clock, self.AI_players, self.V, self.player_names, self.player_scores)
         else:
             return game_loop(self.start_state, self.state_manager, self.SIZE, self.GRID, self.WIDTH, self.LINE_WIDTH, self.CIRCLES, self.HOLE_RADIUS, AI_players = self.AI_players, V = self.V)
 
@@ -120,7 +126,7 @@ def draw_text(state, surf, text, SIZE, x, y):
     COLOR = BLACK
     if state[0] == "1":
         COLOR = BLUE
-    else:
+    elif state[0] == "2":
         COLOR = RED
 
     font = pygame.font.Font(font_name, SIZE)
@@ -148,11 +154,19 @@ def win_display(winner: str, screen, WIDTH, HEIGHT, SIZE, clock, FPS):
 def return_winner(state: str):
     return int(state[0]) % 2 + 1
 
-def render_board(state, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, players, screen):
+def render_board(state, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, players, screen, player_names, player_scores = []):
     screen.fill(BACKGROUND)   
     draw_grid(SIZE, GRID, LINE_WIDTH, screen) 
     draw_pins(state, SIZE, CIRCLES, GRID, HOLE_RADIUS, screen, players)
-    draw_text(state, screen, "Player: " + state[0], 30, WIDTH - 80,30)  
+    if StateManager(int((len(state) - 1)**(0.5))).is_terminal_state(state) and player_names:
+        draw_text("0", screen, player_names[(int(state[0]) % 2)] + " WINS THE GAME", 36, WIDTH/2,WIDTH/2) 
+    pygame.display.update()
+    # pygame.time.delay(400)
+    if player_names:
+        draw_text(state, screen, "Player: " + player_names[int(state[0]) - 1], 20, WIDTH - 100,30) 
+    if player_scores:
+        for i in range(2): 
+            draw_text("0", screen, player_names[i] + " score: " + str(player_scores[i]), 20, 100,30 + 30*i) 
     pygame.display.update() 
     return
 
@@ -183,10 +197,12 @@ def mouse_place_pin(state, CIRCLES, SIZE, state_manager):
      
      
     #SINGLE GAME LOOP
-def game_loop(state, state_manager, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, FPS = None, players = None, screen = None, clock = None, AI_players = None, V = True):
+def game_loop(state, state_manager, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, FPS = None, players = None, screen = None, clock = None, AI_players = None, V = True, player_names = [], player_scores = []):
+    if V:
+        render_board(state, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, players, screen, player_names, player_scores)
+        # pygame.time.delay(1000)
     while True:
-
-
+    
         if state_manager.is_terminal_state(state):
             # draw_text(state, screen, "Player: " + str(return_winner(state)) + " WON!", 30, WIDTH - 80,30)  
             # render_board(state, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, players, screen)
@@ -198,24 +214,30 @@ def game_loop(state, state_manager, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE
                 if state[0] == "1":
                     #Get Distribution from anet and choose the best move
                     D = AI_players[0].forward(state).tolist()
+                    print(state_manager.get_legal_moves(state))
 
+                    print("Before")
+                    print(D)
+                    
                     #Find best legal move
                     while D.index(max(D)) not in state_manager.get_legal_moves(state):
                         D[D.index(max(D))] = -99999 
-                    
+                    print("After")
+                    print(D)
                     #Do action
                     state = state_manager.simulate_move(state, D.index(max(D)))
                     continue
             else:
                 #Get Distribution from anet and choose the best move
                 D = AI_players[int(state[0]) - 1].forward(state).tolist()
+                # print(D)
                 while D.index(max(D)) not in state_manager.get_legal_moves(state):
                     D[D.index(max(D))] = -99999 
                 state = state_manager.simulate_move(state, D.index(max(D)))
 
-                continue
         if V:
-            render_board(state, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, players, screen)
+            render_board(state, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE_RADIUS, players, screen, player_names, player_scores)
+            # pygame.time.delay(1000)
             clock.tick(FPS)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -230,17 +252,44 @@ def game_loop(state, state_manager, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE
                         quit()
 
 
+def func2():
+    i = 1
+    print(i)
+    while i < 10000000:
+        i += 1
+        if i % 1000 == 0:
+            print(i) 
+            time.sleep(1)
+def func1():
+    game = GameDisplay(3)#, AI_players = AI_players)
+    game.run_game()
 
 if __name__ == "__main__":
-    AI_players = [ANET(size = 2)]
-    print(AI_players)
-    AI_players[0].load_model('checkpoint8.pth.tar')
-    print(AI_players[0].forward('11200'))
-    print(AI_players[0].forward('11002'))
-    print(AI_players[0].forward('10200'))
-    print(AI_players[0].forward('10000'))
+    AI_players = [ANET(size = 4, player = "AI_1")]#, ANET(size = 4, player = "AI_2")] #, ANET(size = 3, player = 2)]
+    # print(AI_players)
+    AI_players[0].load_model('checkpoint9.pth.tar')
+    # AI_players[1].load_model('checkpoint6.pth.tar')
+
+    # AI_players[1].load_model('checkpoint19.pth.tar')
+    
+    # # print(AI_players[0].forward('11200'))
+    # # print(AI_players[0].forward('11002'))
+    # # print(AI_players[0].forward('10200'))
+    # print(AI_players[0].forward("2101020200"))
+    # print(AI_players[0].forward("1202010100"))
+    
+
     
     # AI_players[1].load_model('checkpoint40.pth.tar')
     
-    game = GameDisplay(2, AI_players = AI_players)
-    game.run_game()
+    game = GameDisplay(4, AI_players = AI_players)
+    # game.start_state = "2000000000"
+    game.player_names = ["model_19", "esp"]#, "model_6"]
+    while True:
+        game.run_game() 
+
+    # t1 = threading.Thread(target=func1)
+    # t2 = threading.Thread(target=func2)
+
+    # t1.start()
+    # t2.start()

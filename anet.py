@@ -4,17 +4,18 @@ import torch.nn.functional as F
 import torch.optim as optim
 from matplotlib import pyplot as plt
 
+import time
 import pathlib
 
 class ANET:
-    def __init__(self, layers: list = [32, 64, 128, 256, 128, 64, 32], size: int = 6, lr = 0.2, epsilon = 1, epsilon_decay_rate = 0.99):
+    def __init__(self, player = 1, layers: list = [256,256], size: int = 6, lr = 0.02, epsilon = 1, epsilon_decay_rate = 0.99):
 
         self.epsilon = epsilon #Should be decreased for each backward.
         self.epsilon_decay_rate = epsilon_decay_rate
         self.size = size
 
         self.model = self.init_nn(layers, size)
-        self.optimizer = optim.SGD(self.model.parameters(), lr=lr)
+        self.optimizer = optim.Adagrad(self.model.parameters(), lr=lr)
         self.loss = nn.BCELoss()
 
         self.global_step = 0
@@ -23,6 +24,8 @@ class ANET:
         self.amount_of_training_cases = 0
         self.plot_every_x_step = 100
         self.print_model()
+        self.player = player
+        self.epochs = 5
 
     def init_nn(self, layers: list, size: int):
         modules = []
@@ -50,12 +53,17 @@ class ANET:
             Forward x through the network
             return a tensor which should represent the probability distribution over each possible child state
         """
+
         if type(x) == str:
-            x = self.pre_process_state(x)
-            return self.model.forward(x)#.tolist()
+            x = self.pre_process_state(x[0:])
         elif type(x[0]) == str:
+            for i in range(len(x)):
+                l = list(x[i])
+                x[i] = ''.join(l[0:])
             x = self.pre_process_state(x, batch = True)
-            return self.model.forward(x)
+        forwarded_x = self.model.forward(x)
+
+        return forwarded_x
 
     def backward(self, x_batch, y_batch):
         """
@@ -67,37 +75,43 @@ class ANET:
         # self.epsilon *= self.epsilon_decay_rate
 
         #Preprocess by making the lists into tensors.
+        for epoch in range(self.epochs):
+            y_batch = torch.FloatTensor(y_batch)
+                    
+            output = self.forward(x_batch.copy())
+            
+            # print("follws:")
+
+
+            # print("output followed by target")
+            
+            # for i in range(len(x_batch)):
+            self.optimizer.zero_grad()
+            calculated_loss = self.loss(output, y_batch)
+            calculated_loss.backward()
+            self.optimizer.step()
+            # print(calculated_loss)
+            # for i in range(len(x_batch)):
+            #     print(y_batch[i])
+            #     print(output[i])
+            #     print(self.forward(x_batch[i]))
         
-        y_batch = torch.FloatTensor(y_batch)
-                
-        output = self.forward(x_batch)
-        # print("follws:")
-        # print(x_batch)
-        # print(self.pre_process_state(x_batch[0]))
-        # print(self.pre_process_state(x_batch, batch = True))
-        # print(output)
 
-        # print("output followed by target")
-        
-        # for i in range(len(x_batch)):
-        self.optimizer.zero_grad()
-        calculated_loss = self.loss(output, y_batch)
-        calculated_loss.backward()
-        self.optimizer.step()
-
-
+        # print(calculate_best_index_losses(output.argmax(1), y_batch.argmax(1)))
         self.losses[self.global_step] = calculated_loss
         self.best_index_losses[self.global_step] = calculate_best_index_losses(output.argmax(1), y_batch.argmax(1))
         self.global_step += 1
         self.amount_of_training_cases += len(x_batch)
         if self.global_step % self.plot_every_x_step == 0:
+            x_after_train = self.forward(x_batch.copy())
             print("Saving figure")
             for i in range(len(x_batch)):
                 print(output[i])
                 print(y_batch[i])
+                print(x_after_train[i])
+
                 print()
-            create_plot(self.losses, str(self.global_step) + "_loss")
-            create_plot(self.best_index_losses, str(self.global_step) + "_index_accuracy")
+            create_plot(self.losses, self.best_index_losses, str(self.player) + "_" + str(id(self)))
             
             print(self.amount_of_training_cases)
             print(calculated_loss)
@@ -111,27 +125,41 @@ class ANET:
         # print("after backward")
         # print(self.forward(x_batch[0]))
         
-        
-
 
     def pre_process_state(self, state: list or str, batch: bool = False):
+        all_moves_like_player_one = False
+
+        if all_moves_like_player_one:
+            if batch:
+                transformed_state = []
+                for s in state:
+                    new_state = transform_like_one(s)
+                    transformed_state.append(new_state)
+            else: 
+                transformed_state = transform_like_one(state) 
+
+            state = transformed_state
+            return torch.Tensor(state)
+
         if batch:
             tensor_state = torch.zeros([len(state),len(state[0])])
             for i in range(len(state)):
                 for j in range(len(state[0])):
                     if int(state[i][j]) == 2:
-                        tensor_state[i,j] = 2
+                        tensor_state[i,j] = -1
                     else:
                         tensor_state[i,j] = int(state[i][j])
         else:
             tensor_state = torch.zeros([len(state)])
             for i in range(len(state)):
                 if int(state[i]) == 2:
-                    tensor_state[i] = 2
+                    tensor_state[i] = -1
                 else:
                     tensor_state[i] = int(state[i])
         return tensor_state
-    
+
+
+
     def print_model(self):
         for layer in self.model:
             print(layer)
@@ -170,6 +198,41 @@ class ANET:
                 print(state_array[i*self.size:(i+1)*self.size])
         print()
 
+
+def transform_like_one(s: str):
+    """
+        takes a state string or a batch of state string, and 
+        transforms them to be like the player 1 one would see this state.
+    """
+    new_state = []
+    if (s[0] == "1"):
+        for i in range(1, len(s)):
+            if s[i] == "2":
+                new_state.append(-1)
+            else:
+                new_state.append(int(s[i]))
+    elif (s[0] == "2"):
+        for i in range(1, len(s)):
+            if s[i] == "2":
+                new_state.append(1)
+            elif s[i] == "1":
+                new_state.append(-1)
+            else:
+                new_state.append(0)
+
+        #Now rotate list 90degrees:
+        rotated_state = []
+        size = int(len(s)**(0.5))
+        for i in reversed(range(size)):
+            for j in (range(size)):
+                rotated_state.append(new_state[i+j*size])
+        new_state = rotated_state
+        # print("old state")
+        # print(list(s))
+        # print("new state")
+        # print(new_state)
+    return new_state
+
 def calculate_best_index_losses(pred, target):
     hits = 0
     misses = 0
@@ -180,15 +243,45 @@ def calculate_best_index_losses(pred, target):
             misses += 1
     return hits/(hits + misses)
 
-def create_plot(loss_dict: dict, name: str):
-    lists = sorted(loss_dict.items()) # sorted by key, return a list of tuples
-    x, y = zip(*lists) # unpack a list of pairs into two tuples
+def create_plot(loss_dict: dict, accuracy_dict, name: str):
+    sum_down_factor = 10
+    x_dicts = []
+    y_dicts = []
 
+    dicts = [loss_dict, accuracy_dict]
+    for loss_dict in dicts:
+        x_list = []
+        y_list = []
+        lists = sorted(loss_dict.items()) # sorted by key, return a list of tuples
+        x, y = zip(*lists) # unpack a list of pairs into two tuples
+        step = 0
+        y_sum = 0
+        for x_, y_ in zip(x,y):
+            y_sum += y_
+            if x_ % sum_down_factor == 0:
+                x_list.append(step)
+                y_list.append(y_sum/sum_down_factor)
+                step += 1
+                y_sum = 0
+        x_dicts.append(x_list)
+        y_dicts.append(y_list)
+        
     plt.clf()
-    plt.plot(x, y)
-    if y[-1] < 1:
-        plt.ylim((0, 1))   # set the ylim to bottom, top
-    plt.savefig('plots/plot_' + str(name) + '.png')   # save the figure to file
+    plt.subplot(1, 2, 1)
+    plt.plot(x_dicts[0], y_dicts[0], 'ko-')
+    plt.title('A tale of 2 subplots')
+    plt.ylabel('Damped oscillation')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(x_dicts[1], y_dicts[1], 'r.-')
+    plt.xlabel('time (s)')
+    plt.ylabel('Undamped')
+
+
+    # plt.plot(x_list, y_list)
+
+    plt.ylim((0, 1))   # set the ylim to bottom, top
+    plt.savefig('plots/plot_' + str(time.strftime("%Y-%m-%d_%H.%M.%S", time.gmtime())) + '.png')   # save the figure to file
 
 
 if __name__ == "__main__":

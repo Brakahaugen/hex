@@ -5,6 +5,11 @@ from tqdm import tqdm
 import time
 import random
 from matplotlib import pyplot as plt
+from topp import Topp
+from utils import bias_example
+
+from multiprocessing import Process, Queue
+from visualization2 import GameDisplay
 
 class GameSimulator:
 
@@ -14,7 +19,7 @@ class GameSimulator:
     def run_algo(self,
         anet: ANET, 
         state_manager: StateManager, 
-        I: int = 10, 
+        I: int = 24, 
         num_actual_games: int = 200, 
         number_search_games: int = 200,
         V = False,
@@ -25,9 +30,17 @@ class GameSimulator:
         x = []
         y = []
 
+
         self.state_manager = state_manager
+
+        #1. save interval for ANET
+        anet.save_model(str(-1) + "3x3")
+
         for i in (range(I)):
-            anet.epsilon = 1 - i/I
+            
+
+            anet.epsilon = 1.0 - 1.0*(i/I)
+ 
             print("We are now at epoch: " + str(i))
             # print("\ncurrent epsilon: " + str(anet.epsilon))
             # print("\n" + state_manager.create_initial_state())
@@ -60,12 +73,17 @@ class GameSimulator:
             # plt.savefig(name)
             # plt.close(fig)
 
-            #1. save interval for ANET
-            anet.save_model(str(i))
+
+            # if len(anet):
+            #     for net in range(len(anet)):
+            #         anet[net].save_model("p"+str(anet[net].player)+ "_" + str(i))
+            # else:
 
             #2. Clear Replay buffer
-            RBUF = []
-
+            # if len(anet):
+            #     RBUF = [[],[]]
+            # else:
+            RBUF = [[],[]]
             #3. Randomly init the weights and biases of anet: WHY???
             '...'
 
@@ -94,15 +112,28 @@ class GameSimulator:
                         #Use tree policy P to search from root to a leaf (L) of MCT. Update Bmc with each move.
                         leaf_node = tree.select()
                         
-                        reward, child_node = leaf_node.rollout(anet)
+                        reward, child_node = leaf_node.rollout(anet, heuristic = True)
+                        
                         child_node.backpropagate(reward)
 
 
                     #• D = distribution of visit counts in MCT along all arcs emanating from root.
-                    D, actions = tree.root.get_distribution()
+                    D, actions = tree.root.get_distribution(heuristic = True)
 
-                    #• Add case (root, D) to RBUF
-                    RBUF.append([tree.root.state, D])
+                    #biasD
+                    bias = 5
+                    if bias > 1 and sum(D) > 0:
+                        D = bias_example(D, bias)
+
+                    # • Add case (root, D) to RBUF
+                    # if len(anet):
+                    #     RBUF[int(tree.root.state[0]) % 2].append([tree.root.state, D])
+                    # else:
+                    """
+                        Only train on winning states, not on losing ones.
+                    """
+                    RBUF[int(tree.root.state[0])-1].append([tree.root.state, D])
+
 
                     #Choose actual move (a*) based on D
                     if (sum(D) <= 0):
@@ -123,12 +154,22 @@ class GameSimulator:
 
 
                 #(e) Train ANET on a random minibatch of cases from RBUF
-                if len(RBUF) > batch_size:
-                    batch = random.sample(RBUF, batch_size)
-                else:
-                    batch = RBUF
-                anet.backward([state for state, D in batch], [D for state, D in batch])
-                RBUF = []
+                """
+                    Train on winning states only
+                """
+                RBUF = RBUF[int(tree.root.state[0]) % 2]
+                anet.backward([state for state, D in RBUF], [D for state, D in RBUF])
+                RBUF = [[],[]]
+
+            #1. save interval for ANET
+            anet.save_model(str(i))
+            bottom = 0
+            if i > 20:
+                bottom = i - 20
+            topp = Topp(models = list(range(bottom,i + 1)), G = 1, size = self.state_manager.size, id = "4x4_test", V = False)
+            topp.play()
+
+
 
     def create_output(self, node: Node, init_mode: bool = False):
 
@@ -151,11 +192,16 @@ class GameSimulator:
                 print(player + "'s turn:")
 
 
+    
+
 if __name__ == "__main__":
-    game_size = 2
+    game_size = 4
     g = GameSimulator()
     g.run_algo(anet = ANET(size = game_size), 
                 state_manager = StateManager(game_size), 
                 V = False,
-                number_search_games=100,
-                num_actual_games= 200)
+                I = 100,
+                number_search_games=10,
+                num_actual_games= 100)
+    # d = GameDisplay(3, "1000000000")
+    # d.run_game()
