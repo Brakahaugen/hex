@@ -23,13 +23,14 @@ class BasicClientActor(BasicClientActorAbs):
 
 
         # YOUR CODE HERE
-
+        self.p = state[0]
         print(state)
 
         state = ''.join(str(s) for s in state)
 
         #Forward the state
         # print(state)
+        print("contestants move: ")
         self.state_manager.print_state(state)
         D = self.anet.forward(state)
         
@@ -38,6 +39,7 @@ class BasicClientActor(BasicClientActorAbs):
             if i not in self.state_manager.get_legal_moves(state):
                 D[i] = -99999 
         action = D.tolist().index(max(D))
+        print("my move ("+str(self.p)+"): ")
         self.state_manager.print_state(self.state_manager.simulate_move(state, action))
 
         #Index to tuple:
@@ -66,8 +68,11 @@ class BasicClientActor(BasicClientActorAbs):
         self.state_manager = StateManager(size = game_params[0])
         self.anet = ANET(size = game_params[0])
         #LOAD YOUR BEST 6x6 MODEL
-        # self.anet.load_model("models/check")
+        self.anet.load_model("models/checkpoint29heur.pth.tar")
+        self.wins = 0
+        self.total_games = 0
 
+        print("num games to be played:" + str(num_games))
 
         ##############################
 
@@ -100,9 +105,13 @@ class BasicClientActor(BasicClientActorAbs):
         #
         #
         ##############################
+        self.wins += int(str(winner) == str(self.p))
+        self.total_games += 1
+
         print("Game over, these are the stats:")
         print('Winner: ' + str(winner))
         print('End state: ' + str(end_state))
+        print("winrate: " + str(self.wins/self.total_games))
 
     def handle_series_over(self, stats):
         """

@@ -33,7 +33,7 @@ class GameDisplay:
         self.init_modules()
         #Init start_state
         if start_state == None: 
-            self.start_state = '1'.ljust(size**2 + 1, '0')
+            self.start_state = '2'.ljust(size**2 + 1, '0')
         self.AI_players = AI_players
         self.player_names = None
         self.player_scores = None
@@ -54,7 +54,7 @@ class GameDisplay:
         self.WIDTH = 700
         self.HEIGHT = 700
         self.LINE_WIDTH = 4
-        self.FPS = 5
+        self.FPS = 1
         self.HOLE_RADIUS = int(self.HEIGHT/ (4*self.SIZE))
         self.GRID = {}
         self.CIRCLES = {}
@@ -230,7 +230,7 @@ def game_loop(state, state_manager, SIZE, GRID, WIDTH, LINE_WIDTH, CIRCLES, HOLE
             else:
                 #Get Distribution from anet and choose the best move
                 D = AI_players[int(state[0]) - 1].forward(state).tolist()
-                # print(D)
+                print(D)
                 while D.index(max(D)) not in state_manager.get_legal_moves(state):
                     D[D.index(max(D))] = -99999 
                 state = state_manager.simulate_move(state, D.index(max(D)))
@@ -265,12 +265,12 @@ def func1():
     game.run_game()
 
 if __name__ == "__main__":
-    AI_players = [ANET(size = 4, player = "AI_1")]#, ANET(size = 4, player = "AI_2")] #, ANET(size = 3, player = 2)]
+    AI_players = [ANET(size = 6, player = "AI_1"), ANET(size = 6, player = "AI_2")] #, ANET(size = 3, player = 2)]
     # print(AI_players)
-    AI_players[0].load_model('checkpoint9.pth.tar')
-    # AI_players[1].load_model('checkpoint6.pth.tar')
+    AI_players[0].load_model('checkpoint29heur.pth.tar')
+    # AI_players[0].load_model('checkpoint8.pth.tar')
 
-    # AI_players[1].load_model('checkpoint19.pth.tar')
+    AI_players[1].load_model('checkpoint20heur.pth.tar')
     
     # # print(AI_players[0].forward('11200'))
     # # print(AI_players[0].forward('11002'))
@@ -282,9 +282,8 @@ if __name__ == "__main__":
     
     # AI_players[1].load_model('checkpoint40.pth.tar')
     
-    game = GameDisplay(4, AI_players = AI_players)
-    # game.start_state = "2000000000"
-    game.player_names = ["model_19", "esp"]#, "model_6"]
+    game = GameDisplay(6, AI_players = AI_players)
+    game.player_names = ["model29_heur", "20heur"]#, "model_6"]
     while True:
         game.run_game() 
 

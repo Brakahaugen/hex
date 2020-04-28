@@ -140,6 +140,7 @@ class Node:
         D = []
 
         #Ordering the lists.
+
         children = [x for y, x in sorted(zip(self.actions, self.children))]
         actions = [y for y, x in sorted(zip(self.actions, self.children))]
         if len(actions) == 0:

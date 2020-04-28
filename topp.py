@@ -26,10 +26,10 @@ class Topp:
         self.players = {}
         self.score = {}
         for i in range(self.M):
-            self.players["player " + str(i)] = ANET(size = self.size)
             self.score[(i)] = 0
-            self.players["player " + str(i)].load_model("models/checkpoint" + str(self.models[i]) + ".pth.tar")
-        #print(self.players)
+            self.players["player " + str(i)] = ANET(size = self.size)
+            self.players["player " + str(i)].load_model("models/checkpoint" + str(self.models[i]) + "heur.pth.tar")
+
         
         
                 
