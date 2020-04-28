@@ -52,7 +52,7 @@ class GameSimulator:
         for i in range(I):
             
 
-            anet.epsilon = 0.3 - 0.3*(i/I)**0.4
+            anet.epsilon = 0.2 - 0.2*(i/I)**0.5
             print("epsilon = " + str(anet.epsilon))
             print("We are now at epoch: " + str(i))
       
@@ -142,7 +142,7 @@ class GameSimulator:
                 
 
             #1. save interval for ANET
-            anet.save_model(str(i) + str("heur6x6_super"))
+            anet.save_model(str(i) + str("heur5x5_sg=500"))
         
         topp = Topp(models = list(range(i)), G = 1, size = self.state_manager.size, id = "final_tests", V = False)
         topp.play()
@@ -173,17 +173,17 @@ class GameSimulator:
     
 
 if __name__ == "__main__":
-    # topp = Topp(models = list(range(0, 60)), G = 1, size = 6, id = "heur_modelstesings", V = False)
+    # topp = Topp(models = list(range(0, 50)), G = 1, size = 6, id = "heur_6x6_super_tesings", V = False)
     # topp.play()
     
-    game_size = 6
+    game_size = 5
     g = GameSimulator()
     g.run_algo(anet = ANET(size = game_size), 
                 state_manager = StateManager(game_size), 
                 V = False,
                 I = 50,
-                number_search_games=50,
-                num_actual_games= 50,
+                number_search_games=100,
+                num_actual_games= 100,
                 heuristic_rollout = True,
                 bias = True,
                 reverse_cases = True)

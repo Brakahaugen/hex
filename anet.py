@@ -13,7 +13,7 @@ class ANET:
                 layers: list = [256,256], 
                 activations = [None, torch.nn.ReLU()], #torch.nn.Sigmoid() torch.nn.Linear() torch.nn.Tanh()
                 optimizer = "Adagrad",
-                size: int = 6, lr = 0.02, 
+                size: int = 6, lr = 0.05, 
                 epsilon = 1):
 
         self.epsilon = epsilon #Should be decreased for each backward.
@@ -35,12 +35,12 @@ class ANET:
         self.loss = nn.BCELoss()
 
         
-        self.epochs = 3
+        self.epochs = 1
 
         self.global_step = 0
         self.losses = {}
         self.best_index_losses = {}
-        self.plot_every_x_step = 30
+        self.plot_every_x_step = 100
 
         self.amount_of_training_cases = 0
         self.print_model()
