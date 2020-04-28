@@ -37,7 +37,6 @@ class GameSimulator:
         #1. save interval for ANET
         anet.save_model(str(-1))
 
-        anet.load_model("checkpoint29heur.pth.tar")
         #pretrain
         # with open("RBUF.txt") as file_in:
         #     for line in file_in:
@@ -50,10 +49,10 @@ class GameSimulator:
         # anet.save_model(str("super_boy"))
         # return
 
-        for i in (range(I, I + I)):
+        for i in range(I):
             
 
-            anet.epsilon = 0.2 - 0.2*(i/I)**0.4
+            anet.epsilon = 0.3 - 0.3*(i/I)**0.4
             print("epsilon = " + str(anet.epsilon))
             print("We are now at epoch: " + str(i))
       
@@ -143,7 +142,7 @@ class GameSimulator:
                 
 
             #1. save interval for ANET
-            anet.save_model(str(i) + str("heur"))
+            anet.save_model(str(i) + str("heur6x6_super"))
         
         topp = Topp(models = list(range(i)), G = 1, size = self.state_manager.size, id = "final_tests", V = False)
         topp.play()
@@ -174,18 +173,18 @@ class GameSimulator:
     
 
 if __name__ == "__main__":
-    topp = Topp(models = list(range(0, 38)), G = 1, size = 6, id = "heur_modelstesings", V = False)
-    topp.play()
+    # topp = Topp(models = list(range(0, 60)), G = 1, size = 6, id = "heur_modelstesings", V = False)
+    # topp.play()
     
-    # game_size = 6
-    # g = GameSimulator()
-    # g.run_algo(anet = ANET(size = game_size), 
-    #             state_manager = StateManager(game_size), 
-    #             V = False,
-    #             I = 30,
-    #             number_search_games=36,
-    #             num_actual_games= 30,
-    #             heuristic_rollout = True,
-    #             bias = True,
-    #             reverse_cases = True)
+    game_size = 6
+    g = GameSimulator()
+    g.run_algo(anet = ANET(size = game_size), 
+                state_manager = StateManager(game_size), 
+                V = False,
+                I = 50,
+                number_search_games=50,
+                num_actual_games= 50,
+                heuristic_rollout = True,
+                bias = True,
+                reverse_cases = True)
                 
